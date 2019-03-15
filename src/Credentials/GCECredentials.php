@@ -50,6 +50,8 @@ use GuzzleHttp\Psr7\Request;
  */
 class GCECredentials extends CredentialsLoader
 {
+    use MetadataTrait;
+
     const cacheKey = 'GOOGLE_AUTH_PHP_GCE';
     /**
      * The metadata IP address on appengine instances.
@@ -63,6 +65,11 @@ class GCECredentials extends CredentialsLoader
      * The metadata path of the default token.
      */
     const TOKEN_URI_PATH = 'v1/instance/service-accounts/default/token';
+
+    /**
+     * The metadata path of the default service account.
+     */
+    const SERVICE_ACCOUNT_URI_PATH = 'v1/instance/service-accounts/default';
 
     /**
      * The header whose presence indicates GCE presence.
@@ -102,6 +109,11 @@ class GCECredentials extends CredentialsLoader
     protected $lastReceivedToken;
 
     /**
+     * @var array
+     */
+    private $serviceAccount;
+
+    /**
      * The full uri for accessing the default token.
      *
      * @return string
@@ -111,6 +123,18 @@ class GCECredentials extends CredentialsLoader
         $base = 'http://' . self::METADATA_IP . '/computeMetadata/';
 
         return $base . self::TOKEN_URI_PATH;
+    }
+
+    /**
+     * The full uri for accessing the default service account.
+     *
+     * @return string
+     */
+    public static function getServiceAccountUri()
+    {
+        $base = 'http://' . self::METADATA_IP . '/computeMetadata/default/?recursive=true';
+
+        return $base . self::SERVICE_ACCOUNT_URI_PATH;
     }
 
     /**
@@ -190,25 +214,44 @@ class GCECredentials extends CredentialsLoader
         if (!$this->isOnGce) {
             return array();  // return an empty array with no access token
         }
-        $resp = $httpHandler(
-            new Request(
-                'GET',
-                self::getTokenUri(),
-                [self::FLAVOR_HEADER => 'Google']
-            )
-        );
-        $body = (string)$resp->getBody();
 
-        // Assume it's JSON; if it's not throw an exception
-        if (null === $json = json_decode($body, true)) {
-            throw new \Exception('Invalid JSON response');
-        }
+        $json = $this->getJsonFromMetadata($httpHandler, self::getTokenUri());
 
         // store this so we can retrieve it later
         $this->lastReceivedToken = $json;
         $this->lastReceivedToken['expires_at'] = time() + $json['expires_in'];
 
         return $json;
+    }
+
+    /**
+     * Get the default service account.
+     *
+     * @param callable $httpHandler callback which delivers psr7 request
+     * @return string
+     */
+    public function fetchServiceAccount(callable $httpHandler = null)
+    {
+        if ($this->serviceAccount) {
+            return $this->serviceAccount;
+        }
+
+        if (is_null($httpHandler)) {
+            $httpHandler = HttpHandlerFactory::build();
+        }
+
+        if (!$this->hasCheckedOnGce) {
+            $this->isOnGce = self::onGce($httpHandler);
+        }
+
+        if (!$this->isOnGce) {
+            return [];
+        }
+
+        $json = $this->getJsonFromMetadata($httpHandler, self::getServiceAccountUri());
+
+        $this->serviceAccount = $json;
+        return $this->serviceAccount;
     }
 
     /**

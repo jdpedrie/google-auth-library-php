@@ -178,4 +178,24 @@ class ServiceAccountCredentials extends CredentialsLoader
     {
         $this->auth->setSub($sub);
     }
+
+    /**
+     * Get the keyfile client email.
+     *
+     * @return string
+     */
+    public function getClientEmail()
+    {
+        return $this->auth->getIssuer();
+    }
+
+    /**
+     * Get the private key from the keyfile.
+     *
+     * @return string
+     */
+    public function getPrivateKey()
+    {
+        return $this->auth->getSigningKey();
+    }
 }

@@ -130,4 +130,24 @@ class ServiceAccountJwtAccessCredentials extends CredentialsLoader
     {
         return $this->auth->getLastReceivedToken();
     }
+
+    /**
+     * Get the keyfile client email.
+     *
+     * @return string
+     */
+    public function getClientEmail()
+    {
+        return $this->auth->getIssuer();
+    }
+
+    /**
+     * Get the private key from the keyfile.
+     *
+     * @return string
+     */
+    public function getPrivateKey()
+    {
+        return $this->auth->getSigningKey();
+    }
 }

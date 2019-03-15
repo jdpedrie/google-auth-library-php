@@ -519,3 +519,35 @@ class SACJwtAccessComboTest extends TestCase
         );
     }
 }
+
+class ServiceAccountKeyFileDataTest extends TestCase
+{
+    private $keyFile = [
+        'client_email' => 'foo@bar.com',
+        'private_key' => 'pkey'
+    ];
+
+    /**
+     * @dataProvider credentials
+     */
+    public function testGetClientEmail($credentials)
+    {
+        $this->assertEquals($this->keyFile['client_email'], $credentials->getClientEmail());
+    }
+
+    /**
+     * @dataProvider credentials
+     */
+    public function testGetPrivateKey($credentials)
+    {
+        $this->assertEquals($this->keyFile['private_key'], $credentials->getPrivateKey());
+    }
+
+    public function credentials()
+    {
+        return [
+            [new ServiceAccountCredentials('', $this->keyFile)],
+            [new ServiceAccountJwtAccessCredentials($this->keyFile)],
+        ];
+    }
+}

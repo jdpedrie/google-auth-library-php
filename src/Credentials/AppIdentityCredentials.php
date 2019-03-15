@@ -51,6 +51,8 @@ use Google\Auth\CredentialsLoader;
  */
 class AppIdentityCredentials extends CredentialsLoader
 {
+    use MetadataTrait;
+
     /**
      * Result of fetchAuthToken.
      *
@@ -62,6 +64,11 @@ class AppIdentityCredentials extends CredentialsLoader
      * Array of OAuth2 scopes to be requested.
      */
     private $scope;
+
+    /**
+     * @var array
+     */
+    private $serviceAccount;
 
     public function __construct($scope = array())
     {
@@ -126,6 +133,32 @@ class AppIdentityCredentials extends CredentialsLoader
         $this->lastReceivedToken = $token;
 
         return $token;
+    }
+
+    /**
+     * Get the default service account.
+     *
+     * @param callable $httpHandler callback which delivers psr7 request
+     * @return string
+     */
+    public function fetchServiceAccount(callable $httpHandler = null)
+    {
+        if ($this->serviceAccount) {
+            return $this->serviceAccount;
+        }
+
+        if (!self::onAppEngine()) {
+            return [];
+        }
+
+        if (is_null($httpHandler)) {
+            $httpHandler = HttpHandlerFactory::build();
+        }
+
+        $json = $this->getJsonFromMetadata($httpHandler, GCECredentials::getServiceAccountUri());
+
+        $this->serviceAccount = $json;
+        return $this->serviceAccount;
     }
 
     /**

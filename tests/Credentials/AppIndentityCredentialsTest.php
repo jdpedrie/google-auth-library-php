@@ -20,6 +20,8 @@ namespace Google\Auth\Tests;
 use google\appengine\api\app_identity\AppIdentityService;
 // included from tests\mocks\AppIdentityService.php
 use Google\Auth\Credentials\AppIdentityCredentials;
+use Google\Auth\Credentials\GCECredentials;
+use GuzzleHttp\Psr7;
 use PHPUnit\Framework\TestCase;
 
 class AppIdentityCredentialsOnAppEngineTest extends TestCase
@@ -107,5 +109,54 @@ class AppIdentityCredentialsFetchAuthTokenTest extends TestCase
         $g = new AppIdentityCredentials($scope3);
         $g->fetchAuthToken();
         $this->assertEquals([$scope3], AppIdentityService::$scope);
+    }
+}
+
+class AppIdentityCredentialsMetadataServerTest extends TestCase
+{
+    public function testfetchServiceAccount()
+    {
+        $_SERVER['SERVER_SOFTWARE'] = 'Google App Engine';
+
+        $body = ['foo' => 'bar'];
+
+        $expected = new Psr7\Request(
+            'GET',
+            GCECredentials::getServiceAccountUri(),
+            [
+                GCECredentials::FLAVOR_HEADER => 'Google'
+            ],
+            Psr7\stream_for(json_encode($body))
+        );
+
+        $handler = function ($request) use ($expected, $body) {
+            $this->assertEquals(
+                $expected->getUri(),
+                $request->getUri()
+            );
+            $this->assertEquals(
+                $expected->getMethod(),
+                $request->getMethod()
+            );
+            $this->assertEquals(
+                $expected->getHeaders(),
+                $request->getHeaders()
+            );
+
+            return new Psr7\Response(200, [], Psr7\stream_for(json_encode($body)));
+        };
+
+        $creds = new AppIdentityCredentials;
+        $json = $creds->fetchServiceAccount($handler);
+
+        $this->assertEquals($body, $json);
+
+        // test that subsequent requests use the cached value.
+        $handler = function () {
+            $this->assertTrue(false);
+        };
+
+        $json = $creds->fetchServiceAccount($handler);
+        $this->assertEquals($body, $json);
     }
 }
