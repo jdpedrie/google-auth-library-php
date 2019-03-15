@@ -69,7 +69,7 @@ class GCECredentials extends CredentialsLoader
     /**
      * The metadata path of the default service account.
      */
-    const SERVICE_ACCOUNT_URI_PATH = 'v1/instance/service-accounts/default';
+    const SERVICE_ACCOUNT_URI_PATH = 'v1/instance/service-accounts/default/?recursive=true';
 
     /**
      * The header whose presence indicates GCE presence.
@@ -132,7 +132,7 @@ class GCECredentials extends CredentialsLoader
      */
     public static function getServiceAccountUri()
     {
-        $base = 'http://' . self::METADATA_IP . '/computeMetadata/default/?recursive=true';
+        $base = 'http://' . self::METADATA_IP . '/computeMetadata/';
 
         return $base . self::SERVICE_ACCOUNT_URI_PATH;
     }

@@ -68,15 +68,18 @@ class Signer
      */
     public function signBlob(FetchAuthTokenInterface $credentials, $stringToSign, $forceOpenssl = false)
     {
+        var_dump(get_class($credentials));
         switch (true) {
             case $credentials instanceof ServiceAccountCredentials:
             case $credentials instanceof ServiceAccountJwtAccessCredentials:
+                var_dump('using private key');
                 $privateKey = $credentials->getPrivateKey();
                 return $this->signWithPrivateKey($privateKey, $stringToSign, $forceOpenssl);
                 break;
 
             case $credentials instanceof GCECredentials:
             case $credentials instanceof AppIdentityCredentials:
+                var_dump('using iam');
                 $serviceAccount = $credentials->fetchServiceAccount($this->httpHandler);
                 $authToken = $credentials->fetchAuthToken($this->httpHandler);
                 if (!isset($serviceAccount['email']) || !isset($authToken['access_token'])) {
@@ -108,6 +111,7 @@ class Signer
         $signedString = '';
 
         if (class_exists(RSA::class) && !$forceOpenssl) {
+            var_dump('using phpseclib');
             $rsa = new RSA;
             $rsa->loadKey($privateKey);
             $rsa->setSignatureMode(RSA::SIGNATURE_PKCS1);
@@ -115,6 +119,7 @@ class Signer
 
             $signedString = $rsa->sign($stringToSign);
         } elseif (extension_loaded('openssl')) {
+            var_dump('using openssl');
             openssl_sign($stringToSign, $signedString, $privateKey, 'sha256WithRSAEncryption');
         } else {
             // @codeCoverageIgnoreStart
@@ -156,10 +161,10 @@ class Signer
             $headers,
             Psr7\stream_for(json_encode($body))
         );
-
+var_dump($body);
         $res = $httpHandler($request);
         $body = json_decode((string) $res->getBody(), true);
-
+        var_dump($body);
         return $body['signedBlob'];
     }
 }
